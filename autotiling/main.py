@@ -26,6 +26,7 @@ try:
 except ImportError:
     __version__ = "unknown"
 
+DEFAULT_CONFIG_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "autotiling.conf")
 
 def temp_dir():
     return os.getenv("TMPDIR") or os.getenv("TEMP") or os.getenv("TMP") or "/tmp"
@@ -50,14 +51,18 @@ def output_name(con):
             return output_name(p)
 
 
-def switch_splitting(i3, e, debug, outputs, workspaces, depth_limit, splitwidth, splitheight, splitratio):
+def switch_splitting(
+    i3, e, debug, outputs, workspaces, depth_limit, splitwidth, splitheight, splitratio
+):
     try:
         con = i3.get_tree().find_focused()
         output = output_name(con)
         # Stop, if outputs is set and current output is not in the selection
         if outputs and output not in outputs:
             if debug:
-                print(f"Debug: Autotiling turned off on output {output}", file=sys.stderr)
+                print(
+                    f"Debug: Autotiling turned off on output {output}", file=sys.stderr
+                )
             return
 
         if con and not workspaces or (str(con.workspace().num) in workspaces):
@@ -99,88 +104,219 @@ def switch_splitting(i3, e, debug, outputs, workspaces, depth_limit, splitwidth,
             is_tabbed = con.parent.layout == "tabbed"
 
             # Exclude floating containers, stacked layouts, tabbed layouts and full screen mode
-            if (not is_floating
-                    and not is_stacked
-                    and not is_tabbed
-                    and not is_full_screen):
-                new_layout = "splitv" if con.rect.height > con.rect.width / splitratio else "splith"
+            if (
+                not is_floating
+                and not is_stacked
+                and not is_tabbed
+                and not is_full_screen
+            ):
+                new_layout = (
+                    "splitv"
+                    if con.rect.height > con.rect.width / splitratio
+                    else "splith"
+                )
 
                 if new_layout != con.parent.layout:
                     result = i3.command(new_layout)
                     if result[0].success and debug:
                         print(f"Debug: Switched to {new_layout}", file=sys.stderr)
                     elif debug:
-                        print(f"Error: Switch failed with err {result[0].error}", file=sys.stderr)
+                        print(
+                            f"Error: Switch failed with err {result[0].error}",
+                            file=sys.stderr,
+                        )
 
                 if e.change in ["new", "move"] and con.percent:
-                    if con.parent.layout == "splitv" and splitheight != 1.0:  # top / bottom
+                    if (
+                        con.parent.layout == "splitv" and splitheight != 1.0
+                    ):  # top / bottom
                         # print(f"split top fac {splitheight*100}")
-                        i3.command(f"resize set height {int(con.percent * splitheight * 100)} ppt")
-                    elif con.parent.layout == "splith" and splitwidth != 1.0:  # top / bottom:                     # left / right
+                        i3.command(
+                            f"resize set height {int(con.percent * splitheight * 100)} ppt"
+                        )
+                    elif (
+                        con.parent.layout == "splith" and splitwidth != 1.0
+                    ):  # top / bottom:                     # left / right
                         # print(f"split right fac {splitwidth*100} ")
-                        i3.command(f"resize set width {int(con.percent * splitwidth * 100)} ppt")
+                        i3.command(
+                            f"resize set width {int(con.percent * splitwidth * 100)} ppt"
+                        )
 
         elif debug:
-            print("Debug: No focused container found or autotiling on the workspace turned off", file=sys.stderr)
+            print(
+                "Debug: No focused container found or autotiling on the workspace turned off",
+                file=sys.stderr,
+            )
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog="autotiling", description="Script for sway and i3 to automatically switch the horizontal / vertical window split orientation")
+    parser = argparse.ArgumentParser(
+        prog="autotiling",
+        description="Script for sway and i3 to automatically switch the horizontal / vertical window split orientation",
+    )
 
-    parser.add_argument("-d", "--debug", action="store_true",
-                        help="print debug messages to stderr")
-    parser.add_argument("-v", "--version", action="version",
-                        version=f"%(prog)s {__version__}, Python {sys.version}",
-                        help="display version information")
-    parser.add_argument("-o", "--outputs", nargs="*", type=str, default=[],
-                        help="restricts autotiling to certain output; example: autotiling --output  DP-1 HDMI-0")
-    parser.add_argument("-w", "--workspaces", nargs="*", type=str, default=[],
-                        help="restricts autotiling to certain workspaces; example: autotiling --workspaces 8 9")
-    parser.add_argument("-l", "--limit", type=int, default=0,
-                        help='limit how often autotiling will split a container; '
-                             'try "2" if you like master-stack layouts; default: 0 (no limit)')
-    parser.add_argument("-sw",
-                        "--splitwidth",
-                        help='set the width of the vertical split (as factor); default: 1.0;',
-                        type=float,
-                        default=1.0, )
-    parser.add_argument("-sh",
-                        "--splitheight",
-                        help='set the height of the horizontal split (as factor); default: 1.0;',
-                        type=float,
-                        default=1.0, )
-    parser.add_argument("-sr",
-                        "--splitratio",
-                        help='Split direction ratio - based on window height/width; default: 1;'
-                             'try "1.61", for golden ratio - window has to be 61%% wider for left/right split; default: 1.0;',
-                        type=float,
-                        default=1.0, )
+    parser.add_argument(
+        "-d", "--debug", action="store_true", help="print debug messages to stderr"
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}, Python {sys.version}",
+        help="display version information",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        nargs=1,
+        type=str,
+        default=DEFAULT_CONFIG_PATH,
+        help="path to config file; default: ~/.config/autotiling.conf",
+    )
+    parser.add_argument(
+        "-o",
+        "--outputs",
+        nargs="*",
+        type=str,
+        default=[],
+        help="restricts autotiling to certain output; example: autotiling --output  DP-1 HDMI-0",
+    )
+    parser.add_argument(
+        "-w",
+        "--workspaces",
+        nargs="*",
+        type=str,
+        default=[],
+        help="restricts autotiling to certain workspaces; example: autotiling --workspaces 8 9",
+    )
+    parser.add_argument(
+        "-l",
+        "--limit",
+        type=int,
+        default=0,
+        help="limit how often autotiling will split a container; "
+        'try "2" if you like master-stack layouts; default: 0 (no limit)',
+    )
+    parser.add_argument(
+        "-sw",
+        "--splitwidth",
+        help="set the width of the vertical split (as factor); default: 1.0;",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "-sh",
+        "--splitheight",
+        help="set the height of the horizontal split (as factor); default: 1.0;",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "-sr",
+        "--splitratio",
+        help="Split direction ratio - based on window height/width; default: 1;"
+        'try "1.61", for golden ratio - window has to be 61%% wider for left/right split; default: 1.0;',
+        type=float,
+        default=1.0,
+    )
 
     """
     Changing event subscription has already been the objective of several pull request. To avoid doing this again
     and again, let's allow to specify them in the `--events` argument.
     """
-    parser.add_argument("-e", "--events", nargs="*", type=str, default=["WINDOW", "MODE"],
-                        help="list of events to trigger switching split orientation; default: WINDOW MODE")
+    parser.add_argument(
+        "-e",
+        "--events",
+        nargs="*",
+        type=str,
+        default=["WINDOW", "MODE"],
+        help="list of events to trigger switching split orientation; default: WINDOW MODE",
+    )
 
     return parser
 
+def get_config(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    Load config from file specified in args.config and overwrite default values in args.
+    """
+
+    if args.config:
+        if os.path.isfile(args.config):
+            with open(args.config) as f:
+                for line in f:
+                    if line.startswith("#") or not line.strip():
+                        continue
+                    try:
+                        key, value = line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip()
+                        if hasattr(args, key):
+                            attr_type = type(getattr(args, key))
+                            if attr_type == bool:
+                                setattr(args, key, value.lower() in ("true", "1", "yes"))
+                            elif attr_type == list:
+                                setattr(args, key, value.split())
+                            elif attr_type == int:
+                                setattr(args, key, int(value))
+                            elif attr_type == float:
+                                setattr(args, key, float(value))
+                            else:
+                                setattr(args, key, value)
+                    except ValueError:
+                        print(f"Invalid config line: {line}", file=sys.stderr)
+        else:
+            print(f"Config file not found: {args.config}", file=sys.stderr)
+            sys.exit(1)
+
+    return args
+
+def write_default_config(config_path: str):
+    if not os.path.isfile(config_path):
+        default_config = """# Autotiling configuration file
+# Lines starting with # are comments and will be ignored
+# Format: key=value
+
+limit=0
+splitwidth=1.0
+splitheight=1.0
+splitratio=1.0
+events=WINDOW MODE
+"""
+        try:
+            with open(config_path, "w") as f:
+                f.write(default_config)
+            print(f"Default config written to {config_path}")
+        except Exception as e:
+            print(f"Error writing default config: {e}", file=sys.stderr)
+
+
+
 def main():
+    write_default_config(DEFAULT_CONFIG_PATH)
+
     args = get_parser().parse_args()
+
+    args = get_config(args)
 
     if args.debug:
         if args.outputs:
             print(f"autotiling is only active on outputs: {','.join(args.outputs)}")
         if args.workspaces:
-            print(f"autotiling is only active on workspaces: {','.join(args.workspaces)}")
+            print(
+                f"autotiling is only active on workspaces: {','.join(args.workspaces)}"
+            )
+        if args.config:
+            print(f"Using config file: {args.config}")
+            print(f"Printing config values: limit={args.limit}, splitwidth={args.splitwidth}, splitheight={args.splitheight}, splitratio={args.splitratio}, events={','.join(args.events)}")
+            print(f"Printing config value types: limit={type(args.limit)}, splitwidth={type(args.splitwidth)}, splitheight={type(args.splitheight)}, splitratio={type(args.splitratio)}, events={type(args.events)}")
 
     # For use w/ nwg-panel
     ws_file = os.path.join(temp_dir(), "autotiling")
     if args.workspaces:
-        save_string(','.join(args.workspaces), ws_file)
+        save_string(",".join(args.workspaces), ws_file)
     else:
         if os.path.isfile(ws_file):
             os.remove(ws_file)
@@ -197,7 +333,7 @@ def main():
         depth_limit=args.limit,
         splitwidth=args.splitwidth,
         splitheight=args.splitheight,
-        splitratio=args.splitratio
+        splitratio=args.splitratio,
     )
     i3 = Connection()
     for e in args.events:
