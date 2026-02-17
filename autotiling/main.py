@@ -26,7 +26,11 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-DEFAULT_CONFIG_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "autotiling.conf")
+DEFAULT_CONFIG_PATH = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+    "autotiling.conf",
+)
+
 
 def temp_dir():
     return os.getenv("TMPDIR") or os.getenv("TEMP") or os.getenv("TMP") or "/tmp"
@@ -238,6 +242,7 @@ def get_parser():
 
     return parser
 
+
 def get_config(args: argparse.Namespace) -> argparse.Namespace:
     """
     Load config from file specified in args.config and overwrite default values in args.
@@ -256,7 +261,9 @@ def get_config(args: argparse.Namespace) -> argparse.Namespace:
                         if hasattr(args, key):
                             attr_type = type(getattr(args, key))
                             if attr_type == bool:
-                                setattr(args, key, value.lower() in ("true", "1", "yes"))
+                                setattr(
+                                    args, key, value.lower() in ("true", "1", "yes")
+                                )
                             elif attr_type == list:
                                 setattr(args, key, value.split())
                             elif attr_type == int:
@@ -272,6 +279,7 @@ def get_config(args: argparse.Namespace) -> argparse.Namespace:
             sys.exit(1)
 
     return args
+
 
 def write_default_config(config_path: str):
     if not os.path.isfile(config_path):
@@ -293,7 +301,6 @@ events=WINDOW MODE
             print(f"Error writing default config: {e}", file=sys.stderr)
 
 
-
 def main():
     write_default_config(DEFAULT_CONFIG_PATH)
 
@@ -310,8 +317,12 @@ def main():
             )
         if args.config:
             print(f"Using config file: {args.config}")
-            print(f"Printing config values: limit={args.limit}, splitwidth={args.splitwidth}, splitheight={args.splitheight}, splitratio={args.splitratio}, events={','.join(args.events)}")
-            print(f"Printing config value types: limit={type(args.limit)}, splitwidth={type(args.splitwidth)}, splitheight={type(args.splitheight)}, splitratio={type(args.splitratio)}, events={type(args.events)}")
+            print(
+                f"Printing config values: limit={args.limit}, splitwidth={args.splitwidth}, splitheight={args.splitheight}, splitratio={args.splitratio}, events={','.join(args.events)}"
+            )
+            print(
+                f"Printing config value types: limit={type(args.limit)}, splitwidth={type(args.splitwidth)}, splitheight={type(args.splitheight)}, splitratio={type(args.splitratio)}, events={type(args.events)}"
+            )
 
     # For use w/ nwg-panel
     ws_file = os.path.join(temp_dir(), "autotiling")
